@@ -2,6 +2,7 @@ import streamlit as st
 from PIL import Image
 import json
 import uuid
+import os
 
 # Importazione della libreria ufficiale Google GenAI
 try:
@@ -335,20 +336,52 @@ with col_lang:
 t = I18N[st.session_state.lingua]
 
 # ==========================================
-# 🔐 ISOLAMENTO CRITTOGRAFICO AUTOMATICO
+# 🔐 PROFILO E GESTIONE PERSISTENZA FILE JSON
 # ==========================================
 st.sidebar.title("ATELIER")
 st.sidebar.markdown("---")
 st.sidebar.subheader("👤 Il Tuo Profilo Privato")
 nome_utente = st.sidebar.text_input("Il tuo Nome", value="Ospite", help="Inserisci il tuo nome per personalizzare l'esperienza.")
 
+# Funzione per pulire il nome utente per i nomi dei file
+nome_safe = "".join(c for c in nome_utente if c.isalnum() or c in (' ', '_', '-')).strip().replace(" ", "_")
+if not nome_safe:
+    nome_safe = "ospite"
+
+filename_storage = f"guardaroba_{nome_safe}_{UID[:8]}.json"
+
 key_guardaroba = f"guardaroba_{UID}"
 key_profilo = f"profilo_{UID}"
 key_chat = f"academy_chat_{UID}"
 key_ai_draft = f"ai_draft_{UID}"
 
+# Caricamento automatico dal file se esiste sul server
 if key_guardaroba not in st.session_state:
-    st.session_state[key_guardaroba] = []
+    if os.path.exists(filename_storage):
+        try:
+            with open(filename_storage, "r", encoding="utf-8") as f:
+                st.session_state[key_guardaroba] = json.load(f)
+        except Exception:
+            st.session_state[key_guardaroba] = []
+    else:
+        st.session_state[key_guardaroba] = []
+
+def salva_guardaroba_automatico():
+    """Salva automaticamente lo stato corrente del guardaroba su file JSON locale"""
+    try:
+        # Puliamo gli oggetti immagine binari se presenti, convertendoli in stringhe o mantenendo i link/strutture serializzabili
+        data_to_save = []
+        for c in st.session_state[key_guardaroba]:
+            item_copy = c.copy()
+            # Se l'immagine è un UploadedFile di Streamlit, non possiamo salvarla direttamente in JSON, salviamo un placeholder testuale o lasciamo invariato se è stringa
+            if hasattr(item_copy.get("immagine"), "name"):
+                item_copy["immagine"] = "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
+            data_to_save.append(item_copy)
+            
+        with open(filename_storage, "w", encoding="utf-8") as f:
+            json.dump(data_to_save, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
 
 if key_profilo not in st.session_state:
     st.session_state[key_profilo] = DEFAULT_PROFILO.copy()
@@ -448,7 +481,7 @@ if sezione_idx == 0:
 # ==========================================
 elif sezione_idx == 1:
     st.title(t["sec2_title"])
-    st.markdown(f"<p style='color: #666;'>Guardaroba privato di: <b>{nome_utente}</b></p>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: #666;'>Guardaroba privato di: <b>{nome_utente}</b> (Salvataggio automatico attivo)</p>", unsafe_allow_html=True)
     tab1, tab2, tab3 = st.tabs([t["sec2_tab1"], t["sec2_tab2"], t["sec2_tab3"]])
     
     with tab1:
@@ -523,7 +556,6 @@ elif sezione_idx == 1:
             salva_btn = st.form_submit_button(t["sec2_save"])
             
             if salva_btn and nome_capo and colore:
-                # Se è stata caricata una foto nell'uploader sopra, la salviamo come oggetto Immagine o Bytes, altrimenti usiamo placeholder
                 img_data_to_save = capo_image if capo_image is not None else "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
                 nuovo_capo = {
                     "id": len(st.session_state[key_guardaroba]) + 1,
@@ -531,6 +563,7 @@ elif sezione_idx == 1:
                     "colore": colore, "materiale": materiale, "stagione": stagione, "immagine": img_data_to_save
                 }
                 st.session_state[key_guardaroba].append(nuovo_capo)
+                salva_guardaroba_automatico()
                 st.success("✅ Salvato nel tuo guardaroba privato!")
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -543,14 +576,13 @@ elif sezione_idx == 1:
                 with cols[idx % 3]:
                     st.markdown("<div class='atelier-card' style='height: 100%;'>", unsafe_allow_html=True)
                     
-                    # Mostra foto reale caricata o link di fallback
-                    if capo["immagine"]:
+                    if capo.get("immagine"):
                         st.image(capo["immagine"], use_container_width=True)
                     else:
                         st.image("https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop", use_container_width=True)
                     
                     st.markdown(f"### {capo['nome']}")
-                    st.markdown(f"🏷️ **Categoria:** {capo['categoria']}")
+                    st.markdown(f"🏷️️ **Categoria:** {capo['categoria']}")
                     if capo.get('marca'):
                         st.markdown(f"🔖 **Marca:** {capo['marca']}")
                     st.markdown(f"🎨 **Colore:** {capo['colore']}")
@@ -560,18 +592,18 @@ elif sezione_idx == 1:
                     st.markdown("---")
                     if st.button(t["sec2_remove"], key=f"del_{UID}_{capo['id']}"):
                         st.session_state[key_guardaroba] = [c for c in st.session_state[key_guardaroba] if c["id"] != capo["id"]]
+                        salva_guardaroba_automatico()
                         st.rerun()
                     st.markdown("</div>", unsafe_allow_html=True)
 
     with tab3:
         st.markdown("<div class='atelier-card'>", unsafe_allow_html=True)
         st.subheader("📥 Esporta o 📤 Importa il tuo Armadio")
-        st.caption("Scarica il file JSON del tuo armadio sul telefono per averlo sempre con te.")
+        st.caption("Il sistema salva già tutto in automatico, ma puoi comunque scaricare un file di backup o importarne uno vecchio.")
         
-        # Per consentire il dump JSON senza errori dovuti agli oggetti binari delle immagini caricate, salviamo le info testuali
         export_data = [{k: v for k, v in c.items() if k != 'immagine'} for c in st.session_state[key_guardaroba]]
         json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
-        st.download_button("📥 Scarica il mio Guardaroba (.json)", data=json_str, file_name=f"guardaroba_{nome_utente}.json", mime="application/json")
+        st.download_button("📥 Scarica il mio Guardaroba (.json)", data=json_str, file_name=f"guardaroba_{nome_safe}.json", mime="application/json")
         
         st.markdown("---")
         uploaded_json = st.file_uploader("📤 Ricarica il tuo Guardaroba salvato", type=["json"], key=f"up_{UID}")
@@ -579,7 +611,8 @@ elif sezione_idx == 1:
             try:
                 dados = json.load(uploaded_json)
                 st.session_state[key_guardaroba] = dados
-                st.success("✅ Guardaroba privato ripristinato con successo!")
+                salva_guardaroba_automatico()
+                st.success("✅ Guardaroba privato ripristinato e salvato con successo!")
             except Exception as e:
                 st.error(f"Errore nel file caricato: {e}")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -682,67 +715,4 @@ elif sezione_idx == 3:
         
         scelta_rapida = None
         for q in t["sec4_quick_qs"]:
-            if st.button(f"📌 {q}", use_container_width=True, key=f"btn_{UID}_{q[:10]}"):
-                scelta_rapida = q
-                
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    with col_ac2:
-        st.markdown("<div class='atelier-card' style='min-height: 500px;'>", unsafe_allow_html=True)
-        st.subheader(t["sec4_chat_title"])
-        
-        domanda_utente = st.text_input(
-            t["sec4_input_label"],
-            value=scelta_rapida if scelta_rapida else "",
-            placeholder=t["sec4_placeholder"],
-            key=f"input_chat_{UID}"
-        )
-        
-        invia_domanda = st.button(t["sec4_btn"], key=f"send_chat_{UID}")
-        
-        if invia_domanda and domanda_utente:
-            if not api_key_input:
-                st.error("⚠️ Inserisci la tua API Key di Google Gemini nella barra laterale.")
-            elif not HAS_GENAI:
-                st.error("⚠️ Libreria `google-genai` mancante.")
-            else:
-                with st.spinner("Consultazione archivi sartoriali in corso..."):
-                    client = genai.Client(api_key=api_key_input)
-                    scheda_fisica = get_scheda_fisica_prompt()
-                    
-                    prompt_academy = f"""
-                    Sei un Professore di Storia della Moda, Maestro Sartoriale ed Esperto Tessile.
-                    RISPONDI INTERAMENTE IN LINGUA: {t['lang_code']}.
-                    
-                    UTENTE: {nome_utente}
-                    DOMANDA: "{domanda_utente}"
-                    MISURE SARTORIALI UTENTE: {scheda_fisica}
-                    
-                    Fornisci una risposta formativa, eloquente, ben strutturata in sezioni con titoli chiari.
-                    """
-                    
-                    risposta_academy = None
-                    for mod in ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash']:
-                        try:
-                            response = client.models.generate_content(model=mod, contents=prompt_academy)
-                            if response and response.text:
-                                risposta_academy = response.text
-                                break
-                        except Exception: continue
-                    
-                    if risposta_academy:
-                        st.session_state[key_chat].append({"q": domanda_utente, "a": risposta_academy})
-                    else:
-                        st.error("⚠ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
-
-        chat_storico = st.session_state[key_chat]
-        if chat_storico:
-            st.markdown("---")
-            for chat in reversed(chat_storico):
-                st.markdown(f"#### ❓ {chat['q']}")
-                st.markdown(chat['a'])
-                st.markdown("---")
-        else:
-            st.info(t["sec4_empty"])
-            
-        st.markdown("</div>", unsafe_allow_html=True)
+            if st.button(f"
