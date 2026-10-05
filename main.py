@@ -54,8 +54,9 @@ I18N = {
         "sec2_tab1": "➕ AGGIUNGI NUOVO CAPO O ACCESSORIO",
         "sec2_tab2": "👔 IL TUO ARMADIO",
         "sec2_tab3": "💾 BACKUP & IMPORTAZIONE",
-        "sec2_mode": "Seleziona modalità di inserimento:",
-        "sec2_modes": ["📸 Carica Foto", "🔍 Ricerca Web"],
+        "sec2_ai_title": "🤖 Assistente Visivo Sartoriale con IA",
+        "sec2_ai_desc": "Carica la foto di un capo: Gemini analizzerà l'immagine e compilerà automaticamente i campi al posto tuo!",
+        "sec2_ai_btn": "✨ RICONOSCI DETTAGLI CON IA",
         "sec2_cat_opts": ["Pantaloni", "Giacche / Capispalla", "Camicie / Bluse / Polo", "Maglieria", "Abiti Completi / Vestiti", "Gonne", "Scarpe", "Accessori"],
         "sec2_mat_opts": ["Cotone", "Lana / Cashmere", "Lino", "Seta", "Pelle / Camoscio", "Misto / Tecnico"],
         "sec2_sea_opts": ["Tutte le stagioni", "Autunno / Inverno", "Primavera / Estate"],
@@ -127,8 +128,9 @@ I18N = {
         "sec2_tab1": "➕ ADD ITEM OR ACCESSORY",
         "sec2_tab2": "👔 YOUR WARDROBE",
         "sec2_tab3": "💾 BACKUP & IMPORT",
-        "sec2_mode": "Select entry method:",
-        "sec2_modes": ["📸 Upload Photo", "🔍 Web Search"],
+        "sec2_ai_title": "🤖 AI Visual Assistant",
+        "sec2_ai_desc": "Upload a photo: Gemini will analyze it and auto-fill the form!",
+        "sec2_ai_btn": "✨ RECOGNIZE WITH AI",
         "sec2_cat_opts": ["Trousers", "Jackets / Outerwear", "Shirts / Blouses", "Knitwear", "Suits / Dresses", "Skirts", "Shoes", "Accessories"],
         "sec2_mat_opts": ["Cotton", "Wool / Cashmere", "Linen", "Silk", "Leather / Suede", "Blended / Technical"],
         "sec2_sea_opts": ["All Seasons", "Autumn / Winter", "Spring / Summer"],
@@ -193,8 +195,9 @@ I18N = {
         "sec2_tab1": "➕ NEUES TEIL HINZUFÜGEN",
         "sec2_tab2": "👔 IHR KLEIDERSCHRANK",
         "sec2_tab3": "💾 BACKUP & IMPORT",
-        "sec2_mode": "Eingabemethode wählen:",
-        "sec2_modes": ["📸 Foto hochladen", "🔍 Web-Suche"],
+        "sec2_ai_title": "🤖 KI-Visueller Assistent",
+        "sec2_ai_desc": "Foto hochladen: Die KI erkennt automatisch alle Details!",
+        "sec2_ai_btn": "✨ DETAILS MIT KI ERKENNEN",
         "sec2_cat_opts": ["Hosen", "Jacken / Mäntel", "Hemden / Blusen", "Strickbekleidung", "Anzüge / Kleider", "Röcke", "Schuhe", "Accessoires"],
         "sec2_mat_opts": ["Baumwolle", "Wolle / Kaschmir", "Leinen", "Seide", "Leder / Wildleder", "Mischgewebe"],
         "sec2_sea_opts": ["Alle Jahreszeiten", "Herbst / Winter", "Frühling / Sommer"],
@@ -259,8 +262,9 @@ I18N = {
         "sec2_tab1": "➕ SHTO VESHJE OSE AKSESOR TË RI",
         "sec2_tab2": "👔 DOLLAPI YTI",
         "sec2_tab3": "💾 BACKUP & IMPORT",
-        "sec2_mode": "Zgjidh mënyrën e futjes:",
-        "sec2_modes": ["📸 Ngarko Foto", "🔍 Kërkim në Ueb"],
+        "sec2_ai_title": "🤖 Ndihmësi Vizual me IA",
+        "sec2_ai_desc": "Ngarko foton: Gemini do të analizojë dhe plotësojë fushat automatikisht!",
+        "sec2_ai_btn": "✨ NJOH DETAJET ME AI",
         "sec2_cat_opts": ["Pantallona", "Xhaketa / Pallto", "Këmisha / Bluza", "Triko", "Kostume / Fustane", "Fuste", "Këpucë", "Aksesore"],
         "sec2_mat_opts": ["Pambuk", "Lesh / Kashmir", "In", "Mëndafsh", "Lëkurë / Kamosh", "Miks / Teknike"],
         "sec2_sea_opts": ["Të gjitha stinët", "Vjeshtë / Dimër", "Pranverë / Verë"],
@@ -338,10 +342,10 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("👤 Il Tuo Profilo Privato")
 nome_utente = st.sidebar.text_input("Il tuo Nome", value="Ospite", help="Inserisci il tuo nome per personalizzare l'esperienza.")
 
-# Chiavi di sessione blindate basate sull'UUID univoco del browser (impossibile da sovrapporre)
 key_guardaroba = f"guardaroba_{UID}"
 key_profilo = f"profilo_{UID}"
 key_chat = f"academy_chat_{UID}"
+key_ai_draft = f"ai_draft_{UID}"
 
 if key_guardaroba not in st.session_state:
     st.session_state[key_guardaroba] = []
@@ -351,6 +355,12 @@ if key_profilo not in st.session_state:
 
 if key_chat not in st.session_state:
     st.session_state[key_chat] = []
+
+if key_ai_draft not in st.session_state:
+    st.session_state[key_ai_draft] = {
+        "nome": "", "categoria": t["sec2_cat_opts"][0], "marca": "", 
+        "colore": "", "materiale": t["sec2_mat_opts"][0], "stagione": t["sec2_sea_opts"][0]
+    }
 
 # MENU PRINCIPALE
 sezione_idx = st.sidebar.radio("MENU", range(len(t["menu"])), format_func=lambda x: t["menu"][x])
@@ -434,7 +444,7 @@ if sezione_idx == 0:
         st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. GUARDAROBA DIGITALE ISOLATO
+# 2. GUARDAROBA DIGITALE CON IA E ISOLAMENTO
 # ==========================================
 elif sezione_idx == 1:
     st.title(t["sec2_title"])
@@ -443,23 +453,82 @@ elif sezione_idx == 1:
     
     with tab1:
         st.markdown("<div class='atelier-card'>", unsafe_allow_html=True)
-        modalita_foto = st.radio(t["sec2_mode"], t["sec2_modes"], horizontal=True)
+        st.subheader(t["sec2_ai_title"])
+        st.caption(t["sec2_ai_desc"])
+        
+        capo_image = st.file_uploader("Fotografa o carica il capo", type=["jpg", "jpeg", "png"], key=f"ai_img_{UID}")
+        if capo_image is not None:
+            st.image(capo_image, width=250, caption="Capo da catalogare")
+            if st.button(t["sec2_ai_btn"], key=f"btn_ai_rec_{UID}"):
+                if not api_key_input:
+                    st.error("⚠️ Inserisci la tua API Key di Gemini nella barra laterale.")
+                else:
+                    with st.spinner("Analisi visiva e riconoscimento dettagli in corso..."):
+                        client = genai.Client(api_key=api_key_input)
+                        pil_img = Image.open(capo_image)
+                        prompt_vision = f"""
+                        Analizza questa foto di un capo d'abbigliamento o accessorio.
+                        Restituisci ESATTAMENTE un oggetto JSON valido (senza blocchi di codice markdown attorno se possibile, o puro testo JSON) con queste chiavi:
+                        - "nome": una breve descrizione commerciale (es. "Blazer monopetto blu")
+                        - "categoria": deve essere una tra: {t["sec2_cat_opts"]}
+                        - "marca": marca visibile o stringa vuota ""
+                        - "colore": colore principale
+                        - "materiale": uno tra {t["sec2_mat_opts"]}
+                        - "stagione": uno tra {t["sec2_sea_opts"]}
+                        """
+                        for mod in ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash']:
+                            try:
+                                resp = client.models.generate_content(model=mod, contents=[pil_img, prompt_vision])
+                                txt = resp.text.strip()
+                                if txt.startswith("```json"):
+                                    txt = txt[7:-3].strip()
+                                elif txt.startswith("```"):
+                                    txt = txt[3:-3].strip()
+                                data_parsed = json.loads(txt)
+                                st.session_state[key_ai_draft].update(data_parsed)
+                                st.success("✅ Dettagli riconosciuti con successo dall'IA! Controlla il modulo sotto.")
+                                break
+                            except Exception:
+                                continue
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Modulo di salvataggio precompilato o manuale
+        st.markdown("<div class='atelier-card'>", unsafe_allow_html=True)
+        draft = st.session_state[key_ai_draft]
         
         with st.form(f"form_guardaroba_{UID}"):
             c1, c2 = st.columns(2)
             with c1:
-                nome_capo = st.text_input("Titolo Capo*")
-                categoria = st.selectbox("Categoria*", t["sec2_cat_opts"])
-                colore = st.text_input("Colore Principale*")
+                nome_capo = st.text_input("Titolo Capo*", value=draft.get("nome", ""))
+                
+                cat_list = t["sec2_cat_opts"]
+                cat_val = draft.get("categoria", cat_list[0])
+                cat_idx = cat_list.index(cat_val) if cat_val in cat_list else 0
+                categoria = st.selectbox("Categoria*", cat_list, index=cat_idx)
+                
+                colore = st.text_input("Colore Principale*", value=draft.get("colore", ""))
             with c2:
-                marca = st.text_input("Marca")
-                materiale = st.selectbox("Tessuto", t["sec2_mat_opts"])
-                stagione = st.selectbox("Stagione", t["sec2_sea_opts"])
+                marca = st.text_input("Marca", value=draft.get("marca", ""))
+                
+                mat_list = t["sec2_mat_opts"]
+                mat_val = draft.get("materiale", mat_list[0])
+                mat_idx = mat_list.index(mat_val) if mat_val in mat_list else 0
+                materiale = st.selectbox("Tessuto", mat_list, index=mat_idx)
+                
+                sea_list = t["sec2_sea_opts"]
+                sea_val = draft.get("stagione", sea_list[0])
+                sea_idx = sea_list.index(sea_val) if sea_val in sea_list else 0
+                stagione = st.selectbox("Stagione", sea_list, index=sea_idx)
+                
             salva_btn = st.form_submit_button(t["sec2_save"])
             
             if salva_btn and nome_capo and colore:
                 img_url = "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
-                nuovo_capo = {"id": len(st.session_state[key_guardaroba])+1, "nome": nome_capo, "categoria": categoria, "marca": marca, "colore": colore, "materiale": materiale, "stagione": stagione, "immagine": img_url}
+                nuovo_capo = {
+                    "id": len(st.session_state[key_guardaroba]) + 1,
+                    "nome": nome_capo, "categoria": categoria, "marca": marca,
+                    "colore": colore, "materiale": materiale, "stagione": stagione, "immagine": img_url
+                }
                 st.session_state[key_guardaroba].append(nuovo_capo)
                 st.success("✅ Salvato nel tuo guardaroba privato!")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -648,7 +717,7 @@ elif sezione_idx == 3:
                     if risposta_academy:
                         st.session_state[key_chat].append({"q": domanda_utente, "a": risposta_academy})
                     else:
-                        st.error("⚠️ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
+                        st.error("⚠️️ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
 
         chat_storico = st.session_state[key_chat]
         if chat_storico:
