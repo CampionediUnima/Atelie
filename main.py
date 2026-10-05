@@ -62,7 +62,7 @@ I18N = {
         "sec2_sea_opts": ["Tutte le stagioni", "Autunno / Inverno", "Primavera / Estate"],
         "sec2_save": "💾 SALVA NEL MIO GUARDAROBA",
         "sec2_empty": "👋 Il tuo guardaroba personale è attualmente vuoto.",
-        "sec2_remove": "🗑️ Rimuovi",
+        "sec2_remove": "🗑️ Rimuovi Capo",
         "sec3_title": "GENERATORE OUTFIT",
         "sec3_sub": "Crea abbinamenti perfetti attingendo dal tuo armadio personale",
         "sec3_p1": "1. Parametri della Stylist Session",
@@ -136,7 +136,7 @@ I18N = {
         "sec2_sea_opts": ["All Seasons", "Autumn / Winter", "Spring / Summer"],
         "sec2_save": "💾 SAVE TO MY WARDROBE",
         "sec2_empty": "👋 Your personal wardrobe is currently empty.",
-        "sec2_remove": "🗑️ Remove",
+        "sec2_remove": "🗑️ Remove Item",
         "sec3_title": "OUTFIT GENERATOR",
         "sec3_sub": "Create flawless combinations from your private wardrobe",
         "sec3_p1": "1. Stylist Session Parameters",
@@ -203,7 +203,7 @@ I18N = {
         "sec2_sea_opts": ["Alle Jahreszeiten", "Herbst / Winter", "Frühling / Sommer"],
         "sec2_save": "💾 IN MEINER GARDEROBE SPEICHERN",
         "sec2_empty": "👋 Ihre persönliche Garderobe ist leer.",
-        "sec2_remove": "🗑️ Entfernen",
+        "sec2_remove": "🗑️ Artikel entfernen",
         "sec3_title": "OUTFIT-GENERATOR",
         "sec3_sub": "Erstellen Sie perfekte Kombinationen aus Ihrem privaten Schrank",
         "sec3_p1": "1. Stylist-Sitzungsparameter",
@@ -270,7 +270,7 @@ I18N = {
         "sec2_sea_opts": ["Të gjitha stinët", "Vjeshtë / Dimër", "Pranverë / Verë"],
         "sec2_save": "💾 RUAJ NË GARDEROBËN TIME",
         "sec2_empty": "👋 Garderoba juaj personale është bosh.",
-        "sec2_remove": "🗑️ Fshij",
+        "sec2_remove": "🗑️ Fshij Veshjen",
         "sec3_title": "GJENERUESI I OUTFIT-EVE",
         "sec3_sub": "Krijoni kombinime perfekte nga dollapi juaj privat",
         "sec3_p1": "1. Parametrat e Sesionit të Stilit",
@@ -359,7 +359,7 @@ if key_chat not in st.session_state:
 if key_ai_draft not in st.session_state:
     st.session_state[key_ai_draft] = {
         "nome": "", "categoria": t["sec2_cat_opts"][0], "marca": "", 
-        "colore": "", "materiale": t["sec2_mat_opts"][0], "stagione": t["sec2_sea_opts"][0]
+        "colore": "", "materiale": t["sec2_mat_opts"][0], "stagione": t["sec2_sea_opts"][0], "immagine": None
     }
 
 # MENU PRINCIPALE
@@ -458,14 +458,14 @@ elif sezione_idx == 1:
         
         capo_image = st.file_uploader("Fotografa o carica il capo", type=["jpg", "jpeg", "png"], key=f"ai_img_{UID}")
         if capo_image is not None:
-            st.image(capo_image, width=250, caption="Capo da catalogare")
+            pil_img_preview = Image.open(capo_image)
+            st.image(pil_img_preview, width=250, caption="Capo da catalogare")
             if st.button(t["sec2_ai_btn"], key=f"btn_ai_rec_{UID}"):
                 if not api_key_input:
                     st.error("⚠️ Inserisci la tua API Key di Gemini nella barra laterale.")
                 else:
                     with st.spinner("Analisi visiva e riconoscimento dettagli in corso..."):
                         client = genai.Client(api_key=api_key_input)
-                        pil_img = Image.open(capo_image)
                         prompt_vision = f"""
                         Analizza questa foto di un capo d'abbigliamento o accessorio.
                         Restituisci ESATTAMENTE un oggetto JSON valido (senza blocchi di codice markdown attorno se possibile, o puro testo JSON) con queste chiavi:
@@ -478,7 +478,7 @@ elif sezione_idx == 1:
                         """
                         for mod in ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash']:
                             try:
-                                resp = client.models.generate_content(model=mod, contents=[pil_img, prompt_vision])
+                                resp = client.models.generate_content(model=mod, contents=[pil_img_preview, prompt_vision])
                                 txt = resp.text.strip()
                                 if txt.startswith("```json"):
                                     txt = txt[7:-3].strip()
@@ -523,11 +523,12 @@ elif sezione_idx == 1:
             salva_btn = st.form_submit_button(t["sec2_save"])
             
             if salva_btn and nome_capo and colore:
-                img_url = "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
+                # Se è stata caricata una foto nell'uploader sopra, la salviamo come oggetto Immagine o Bytes, altrimenti usiamo placeholder
+                img_data_to_save = capo_image if capo_image is not None else "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
                 nuovo_capo = {
                     "id": len(st.session_state[key_guardaroba]) + 1,
                     "nome": nome_capo, "categoria": categoria, "marca": marca,
-                    "colore": colore, "materiale": materiale, "stagione": stagione, "immagine": img_url
+                    "colore": colore, "materiale": materiale, "stagione": stagione, "immagine": img_data_to_save
                 }
                 st.session_state[key_guardaroba].append(nuovo_capo)
                 st.success("✅ Salvato nel tuo guardaroba privato!")
@@ -540,10 +541,23 @@ elif sezione_idx == 1:
             cols = st.columns(3)
             for idx, capo in enumerate(st.session_state[key_guardaroba]):
                 with cols[idx % 3]:
-                    st.markdown("<div class='atelier-card'>", unsafe_allow_html=True)
-                    st.image(capo["immagine"], use_container_width=True)
+                    st.markdown("<div class='atelier-card' style='height: 100%;'>", unsafe_allow_html=True)
+                    
+                    # Mostra foto reale caricata o link di fallback
+                    if capo["immagine"]:
+                        st.image(capo["immagine"], use_container_width=True)
+                    else:
+                        st.image("https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop", use_container_width=True)
+                    
                     st.markdown(f"### {capo['nome']}")
-                    st.markdown(f"**{capo['categoria']}** | {capo['colore']}")
+                    st.markdown(f"🏷️ **Categoria:** {capo['categoria']}")
+                    if capo.get('marca'):
+                        st.markdown(f"🔖 **Marca:** {capo['marca']}")
+                    st.markdown(f"🎨 **Colore:** {capo['colore']}")
+                    st.markdown(f"🧵 **Tessuto:** {capo['materiale']}")
+                    st.markdown(f"🌤️ **Stagione:** {capo['stagione']}")
+                    
+                    st.markdown("---")
                     if st.button(t["sec2_remove"], key=f"del_{UID}_{capo['id']}"):
                         st.session_state[key_guardaroba] = [c for c in st.session_state[key_guardaroba] if c["id"] != capo["id"]]
                         st.rerun()
@@ -554,7 +568,9 @@ elif sezione_idx == 1:
         st.subheader("📥 Esporta o 📤 Importa il tuo Armadio")
         st.caption("Scarica il file JSON del tuo armadio sul telefono per averlo sempre con te.")
         
-        json_str = json.dumps(st.session_state[key_guardaroba], ensure_ascii=False, indent=2)
+        # Per consentire il dump JSON senza errori dovuti agli oggetti binari delle immagini caricate, salviamo le info testuali
+        export_data = [{k: v for k, v in c.items() if k != 'immagine'} for c in st.session_state[key_guardaroba]]
+        json_str = json.dumps(export_data, ensure_ascii=False, indent=2)
         st.download_button("📥 Scarica il mio Guardaroba (.json)", data=json_str, file_name=f"guardaroba_{nome_utente}.json", mime="application/json")
         
         st.markdown("---")
@@ -717,7 +733,7 @@ elif sezione_idx == 3:
                     if risposta_academy:
                         st.session_state[key_chat].append({"q": domanda_utente, "a": risposta_academy})
                     else:
-                        st.error("⚠️️ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
+                        st.error("⚠ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
 
         chat_storico = st.session_state[key_chat]
         if chat_storico:
