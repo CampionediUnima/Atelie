@@ -369,11 +369,9 @@ if key_guardaroba not in st.session_state:
 def salva_guardaroba_automatico():
     """Salva automaticamente lo stato corrente del guardaroba su file JSON locale"""
     try:
-        # Puliamo gli oggetti immagine binari se presenti, convertendoli in stringhe o mantenendo i link/strutture serializzabili
         data_to_save = []
         for c in st.session_state[key_guardaroba]:
             item_copy = c.copy()
-            # Se l'immagine è un UploadedFile di Streamlit, non possiamo salvarla direttamente in JSON, salviamo un placeholder testuale o lasciamo invariato se è stringa
             if hasattr(item_copy.get("immagine"), "name"):
                 item_copy["immagine"] = "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop"
             data_to_save.append(item_copy)
@@ -525,7 +523,6 @@ elif sezione_idx == 1:
                                 continue
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # Modulo di salvataggio precompilato o manuale
         st.markdown("<div class='atelier-card'>", unsafe_allow_html=True)
         draft = st.session_state[key_ai_draft]
         
@@ -582,7 +579,7 @@ elif sezione_idx == 1:
                         st.image("https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?q=80&w=500&auto=format&fit=crop", use_container_width=True)
                     
                     st.markdown(f"### {capo['nome']}")
-                    st.markdown(f"🏷️️ **Categoria:** {capo['categoria']}")
+                    st.markdown(f"🏷 **Categoria:** {capo['categoria']}")
                     if capo.get('marca'):
                         st.markdown(f"🔖 **Marca:** {capo['marca']}")
                     st.markdown(f"🎨 **Colore:** {capo['colore']}")
@@ -715,4 +712,67 @@ elif sezione_idx == 3:
         
         scelta_rapida = None
         for q in t["sec4_quick_qs"]:
-            if st.button(f"
+            if st.button(f"📌 {q}", use_container_width=True, key=f"btn_{UID}_{q[:10]}"):
+                scelta_rapida = q
+                
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_ac2:
+        st.markdown("<div class='atelier-card' style='min-height: 500px;'>", unsafe_allow_html=True)
+        st.subheader(t["sec4_chat_title"])
+        
+        domanda_utente = st.text_input(
+            t["sec4_input_label"],
+            value=scelta_rapida if scelta_rapida else "",
+            placeholder=t["sec4_placeholder"],
+            key=f"input_chat_{UID}"
+        )
+        
+        invia_domanda = st.button(t["sec4_btn"], key=f"send_chat_{UID}")
+        
+        if invia_domanda and domanda_utente:
+            if not api_key_input:
+                st.error("⚠️ Inserisci la tua API Key di Google Gemini nella barra laterale.")
+            elif not HAS_GENAI:
+                st.error("⚠️ Libreria `google-genai` mancante.")
+            else:
+                with st.spinner("Consultazione archivi sartoriali in corso..."):
+                    client = genai.Client(api_key=api_key_input)
+                    scheda_fisica = get_scheda_fisica_prompt()
+                    
+                    prompt_academy = f"""
+                    Sei un Professore di Storia della Moda, Maestro Sartoriale ed Esperto Tessile.
+                    RISPONDI INTERAMENTE IN LINGUA: {t['lang_code']}.
+                    
+                    UTENTE: {nome_utente}
+                    DOMANDA: "{domanda_utente}"
+                    MISURE SARTORIALI UTENTE: {scheda_fisica}
+                    
+                    Fornisci una risposta formativa, eloquente, ben strutturata in sezioni con titoli chiari.
+                    """
+                    
+                    risposta_academy = None
+                    for mod in ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash']:
+                        try:
+                            response = client.models.generate_content(model=mod, contents=prompt_academy)
+                            if response and response.text:
+                                risposta_academy = response.text
+                                break
+                        except Exception: continue
+                    
+                    if risposta_academy:
+                        st.session_state[key_chat].append({"q": domanda_utente, "a": risposta_academy})
+                    else:
+                        st.error("⚠️ Servizio momentaneamente occupato. Riprova tra qualche secondo.")
+
+        chat_storico = st.session_state[key_chat]
+        if chat_storico:
+            st.markdown("---")
+            for chat in reversed(chat_storico):
+                st.markdown(f"#### ❓ {chat['q']}")
+                st.markdown(chat['a'])
+                st.markdown("---")
+        else:
+            st.info(t["sec4_empty"])
+            
+        st.markdown("</div>", unsafe_allow_html=True)
