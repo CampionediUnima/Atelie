@@ -16,12 +16,6 @@ except ImportError:
     HAS_GENAI = False
 
 # ==========================================
-# CONFIGURAZIONE MODELLO GEMINI
-# ==========================================
-# Se necessario, puoi cambiare questa stringa in "gemini-2.0-flash" o "gemini-1.5-flash"
-MODEL_NAME = "gemini-2.5-flash"
-
-# ==========================================
 # DIZIONARIO TRADUZIONI MULTILINGUA (IT, EN, DE, SQ)
 # ==========================================
 I18N = {
@@ -296,9 +290,16 @@ st.sidebar.markdown("---")
 sezione_idx = st.sidebar.radio("MENU", range(len(t["menu"])), format_func=lambda x: t["menu"][x])
 st.sidebar.markdown("---")
 
-# Key Gemini API
+# Key Gemini API e Modello
+st.sidebar.subheader("⚙️ Configurazione IA")
 default_api_key = os.getenv("GEMINI_API_KEY", "")
 api_key_input = st.sidebar.text_input("🔑 Gemini API Key", value=default_api_key, type="password")
+
+MODEL_NAME = st.sidebar.selectbox(
+    "🤖 Modello Gemini", 
+    ["gemini-2.0-flash", "gemini-1.5-flash"],
+    index=0
+)
 st.sidebar.markdown("---")
 
 # Modifica Misure e Profilo
