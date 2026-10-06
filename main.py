@@ -16,6 +16,12 @@ except ImportError:
     HAS_GENAI = False
 
 # ==========================================
+# CONFIGURAZIONE MODELLO GEMINI
+# ==========================================
+# Se necessario, puoi cambiare questa stringa in "gemini-2.0-flash" o "gemini-1.5-flash"
+MODEL_NAME = "gemini-2.5-flash"
+
+# ==========================================
 # DIZIONARIO TRADUZIONI MULTILINGUA (IT, EN, DE, SQ)
 # ==========================================
 I18N = {
@@ -156,7 +162,6 @@ I18N = {
         "sec4_empty": "Ask a question or click on a quick topic!"
     }
 }
-# Fallback per Tedesco e Albanese
 I18N["Deutsch"] = I18N["English"]
 I18N["Albanese"] = I18N["Italiano"]
 
@@ -377,7 +382,7 @@ if sezione_idx == 0:
                               f"abbinamento cromatico ed eventuali modifiche sartoriali consigliate.")
                     try:
                         res = client.models.generate_content(
-                            model='gemini-2.5-flash', 
+                            model=MODEL_NAME, 
                             contents=[image, prompt]
                         )
                         st.markdown(res.text)
@@ -431,7 +436,7 @@ elif sezione_idx == 1:
                                          f"- stagione: uno tra {t['sec2_sea_opts']}")
                         try:
                             resp = client.models.generate_content(
-                                model='gemini-2.5-flash', 
+                                model=MODEL_NAME, 
                                 contents=[Image.open(capo_image), prompt_vision],
                                 config=types.GenerateContentConfig(response_mime_type="application/json")
                             )
@@ -589,7 +594,7 @@ elif sezione_idx == 2:
                     
                     client = genai.Client(api_key=api_key_input)
                     try:
-                        res = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                        res = client.models.generate_content(model=MODEL_NAME, contents=prompt)
                         st.markdown(res.text)
                     except Exception as e: 
                         st.error(f"Errore nella generazione dell'outfit: {str(e)}")
@@ -640,7 +645,7 @@ elif sezione_idx == 3:
                                       f"Profilo utente: {get_scheda_fisica_prompt()}\n"
                                       f"Domanda dell'utente: {domanda_da_inviare}")
                     try:
-                        res = client.models.generate_content(model='gemini-2.5-flash', contents=prompt_academy)
+                        res = client.models.generate_content(model=MODEL_NAME, contents=prompt_academy)
                         st.session_state.chat.append({"q": domanda_da_inviare, "a": res.text})
                     except Exception as e: 
                         st.error(f"Errore di connessione al mentore: {str(e)}")
