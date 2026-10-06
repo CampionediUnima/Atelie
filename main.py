@@ -290,16 +290,22 @@ st.sidebar.markdown("---")
 sezione_idx = st.sidebar.radio("MENU", range(len(t["menu"])), format_func=lambda x: t["menu"][x])
 st.sidebar.markdown("---")
 
-# Key Gemini API e Modello
+# Key Gemini API e Selezione Modello
 st.sidebar.subheader("⚙️ Configurazione IA")
 default_api_key = os.getenv("GEMINI_API_KEY", "")
 api_key_input = st.sidebar.text_input("🔑 Gemini API Key", value=default_api_key, type="password")
 
-MODEL_NAME = st.sidebar.selectbox(
+model_choice = st.sidebar.selectbox(
     "🤖 Modello Gemini", 
-    ["gemini-2.0-flash", "gemini-1.5-flash"],
+    ["gemini-2.0-flash", "gemini-2.0-flash-lite", "Personalizzato..."],
     index=0
 )
+
+if model_choice == "Personalizzato...":
+    MODEL_NAME = st.sidebar.text_input("Inserisci ID Modello Custom", "gemini-2.0-flash")
+else:
+    MODEL_NAME = model_choice
+
 st.sidebar.markdown("---")
 
 # Modifica Misure e Profilo
@@ -387,8 +393,11 @@ if sezione_idx == 0:
                             contents=[image, prompt]
                         )
                         st.markdown(res.text)
-                    except Exception as e: 
-                        st.error(f"Errore durante l'analisi: {str(e)}")
+                    except Exception as e:
+                        if "404" in str(e):
+                            st.error(f"⚠️ Il modello '{MODEL_NAME}' non è disponibile per la tua API Key. Assicurati di aver selezionato 'gemini-2.0-flash' nella barra laterale.")
+                        else:
+                            st.error(f"Errore durante l'analisi: {str(e)}")
         else: 
             st.info("👋 Carica o scatta una foto a sinistra e clicca su Analizza per ricevere la consulenza.")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -425,7 +434,7 @@ elif sezione_idx == 1:
                 elif not HAS_GENAI:
                     st.error("⚠️ Libreria 'google-genai' non installata.")
                 else:
-                    with st.spinner("Analisi visiva in corso..."):
+                    with st.spinner("Analisi visiva in corso con IA..."):
                         client = genai.Client(api_key=api_key_input)
                         prompt_vision = (f"Analizza l'immagine di questo capo d'abbigliamento. "
                                          f"Restituisci un oggetto JSON con queste chiavi esatte:\n"
@@ -444,8 +453,11 @@ elif sezione_idx == 1:
                             dati_estratta = json.loads(resp.text)
                             st.session_state.ai_draft.update(dati_estratta)
                             st.success("✨ Dettagli riconosciuti con successo! Verifica e salva qui sotto.")
-                        except Exception as e: 
-                            st.error(f"Impossibile riconoscere i dettagli automaticamente: {e}")
+                        except Exception as e:
+                            if "404" in str(e):
+                                st.error(f"⚠️ Errore 404: Il modello '{MODEL_NAME}' non è stato trovato. Assicurati che nella barra laterale sia selezionato 'gemini-2.0-flash'.")
+                            else:
+                                st.error(f"Impossibile riconoscere i dettagli automaticamente: {e}")
         
         st.markdown("---")
         st.markdown("### 📝 Dettagli Capo")
@@ -597,8 +609,11 @@ elif sezione_idx == 2:
                     try:
                         res = client.models.generate_content(model=MODEL_NAME, contents=prompt)
                         st.markdown(res.text)
-                    except Exception as e: 
-                        st.error(f"Errore nella generazione dell'outfit: {str(e)}")
+                    except Exception as e:
+                        if "404" in str(e):
+                            st.error(f"⚠️ Il modello '{MODEL_NAME}' non è stato trovato per la tua API Key. Seleziona 'gemini-2.0-flash' nella barra laterale.")
+                        else:
+                            st.error(f"Errore nella generazione dell'outfit: {str(e)}")
         else:
             st.info("👋 Seleziona i parametri e clicca 'Genera Outfit' per ricevere il consiglio di stile.")
         st.markdown("</div>", unsafe_allow_html=True)
@@ -648,8 +663,11 @@ elif sezione_idx == 3:
                     try:
                         res = client.models.generate_content(model=MODEL_NAME, contents=prompt_academy)
                         st.session_state.chat.append({"q": domanda_da_inviare, "a": res.text})
-                    except Exception as e: 
-                        st.error(f"Errore di connessione al mentore: {str(e)}")
+                    except Exception as e:
+                        if "404" in str(e):
+                            st.error(f"⚠️ Il modello '{MODEL_NAME}' non è stato trovato. Assicurati che nella barra laterale sia selezionato 'gemini-2.0-flash'.")
+                        else:
+                            st.error(f"Errore di connessione al mentore: {str(e)}")
 
         st.markdown("---")
         if not st.session_state.chat:
